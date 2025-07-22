@@ -1,15 +1,20 @@
-module github.com/AbhiramiRajeev/Ingestion-Service
+module github.com/AbhiramiRajeev/AIRO-Analyzer
 
 go 1.24.3
 
 require (
 	github.com/IBM/sarama v1.45.2
+	github.com/lib/pq v1.10.9
+	github.com/redis/go-redis/v9 v9.11.0
 	github.com/spf13/viper v1.20.1
+	k8s.io/apimachinery v0.33.3
 	k8s.io/klog v1.0.0
 )
 
 require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
@@ -41,4 +46,5 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
 )

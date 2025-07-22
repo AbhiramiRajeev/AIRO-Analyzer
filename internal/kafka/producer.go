@@ -1,7 +1,7 @@
 package kafka
 
 import (
-	"github.com/AbhiramiRajeev/Ingestion-Service/config"
+	"github.com/AbhiramiRajeev/AIRO-Analyzer/config"
 	"github.com/IBM/sarama"
 	"k8s.io/klog"
 )

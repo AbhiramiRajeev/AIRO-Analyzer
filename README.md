@@ -34,3 +34,20 @@ Kafka consumers in Go (with Sarama) need to implement an interface (ConsumerGrou
 | `Setup()`        | Called once per partition before consuming starts                       | Optional — can return `nil`   |
 | `Cleanup()`      | Called after consuming stops (e.g., rebalance, shutdown)                | Optional — can return `nil`   |
 | `ConsumeClaim()` | Where you actually consume messages from the Kafka topic                | ✅ Must be implemented        |
+
+
+### Kafka consumer 
+🧠 Concept
+sarama.ConsumerGroupHandler is an interface with 3 methods:
+Setup
+Cleanup
+ConsumeClaim
+
+If you want to pass a handler to kc.Group.Consume(...), you must pass something that implements this interface.
+✅ So you need:
+A struct (e.g., KafkaConsumerHandler) — this can have any fields you need, like references to services (Analyzer, DB, Redis, etc.).
+That struct must implement all 3 interface methods:
+Setup
+Cleanup
+ConsumeClaim — where the real message processing happens.
+

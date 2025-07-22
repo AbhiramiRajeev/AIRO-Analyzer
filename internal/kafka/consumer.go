@@ -2,14 +2,16 @@ package kafka
 
 import (
 	"context"
-	"encoding/json"
-	"github.com/AbhiramiRajeev/AIRO-Analyzer/internal/analyzer"
-	"github.com/AbhiramiRajeev/Ingestion-Service/config"
-	"github.com/IBM/sarama"
-	"k8s.io/klog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/AbhiramiRajeev/AIRO-Analyzer/config"
+	"github.com/AbhiramiRajeev/AIRO-Analyzer/internal/analyzer"
+	"github.com/AbhiramiRajeev/AIRO-Analyzer/internal/models"
+	"github.com/IBM/sarama"
+	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/klog"
 )
 
 // KafkaConsumer wraps Sarama consumer group
@@ -20,10 +22,10 @@ type KafkaConsumer struct {
 }
 
 // NewKafkaConsumer creates a new consumer group client
-func NewKafkaConsumer(cfg config.Config, handler sarama.ConsumerGroupHandler) (*KafkaConsumer, error) {
+func NewKafkaConsumer(cfg *config.Config, handler sarama.ConsumerGroupHandler) (*KafkaConsumer, error) {
 	kafkaConfig := sarama.NewConfig()
 	kafkaConfig.Consumer.Return.Errors = true // This allows your app to monitor and log Kafka consumption errors like connection issues, topic not found, etc.
-	kafkaConfig.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRange() 
+	kafkaConfig.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRange()
 	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	group, err := sarama.NewConsumerGroup(cfg.KafkaBrokers, cfg.KafkaConsumerGroup, kafkaConfig)
@@ -39,25 +41,31 @@ func NewKafkaConsumer(cfg config.Config, handler sarama.ConsumerGroupHandler) (*
 	}, nil
 }
 
+func NewKafkaConsumerHandler(analyzer *analyzer.AnalyzerService) sarama.ConsumerGroupHandler {
+	return &KafkaConsumerHandler{analyzer: analyzer}
+}
+
 // Start begins consuming messages and handles graceful shutdown
-func (kc *KafkaConsumer)Start(ctx context.Context)error	{
+func (kc *KafkaConsumer) Start(ctx context.Context) error {
 
 	go func() {
 		for {
-			err := kc.Group.Consume(ctx,[]string{kc.Topic},kc.Handler); err!=nil {
-				klog.Info("Error while consuming %v",err)
+			if err := kc.Group.Consume(ctx, []string{kc.Topic}, kc.Handler); err != nil {
+				klog.Info("Error while consuming %v", err)
 			}
 
-			if ctx.Err()!=nil {
+			if ctx.Err() != nil {
 				return
 			}
 		}
 
 	}()
-	
-	return nil
 
-
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT) //SIGINT - press Ctrl + C in the terminal running your Go program SIGTERM - signal used by operating systems to request that a program terminate gracefull (Kubernetes Docker)
+	<-sig                                               // wait for the signal
+	klog.Info("Shuttimg down the consumer")
+	return kc.Group.Close() // After receiving the signal (<-sig), your program is likely exiting or cleaning up and exiting. So closing sig is unnecessary, and doing so manually is even discouraged unless:
 
 }
 
@@ -66,39 +74,42 @@ func (kc *KafkaConsumer)Start(ctx context.Context)error	{
 //////////////////////////////////////////////////////////////
 
 type KafkaConsumerHandler struct {
-	Analyzer *analyzer.AnalyzerService
+	analyzer *analyzer.AnalyzerService
 }
 
-// Setup is run before starting to consume, can be used for init
-func (h *KafkaConsumerHandler) Setup(sarama.ConsumerGroupSession) error {
+func (kh *KafkaConsumerHandler) Setup(session sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-// Cleanup is run after consumer stops
-func (h *KafkaConsumerHandler) Cleanup(sarama.ConsumerGroupSession) error {
+func (kh *KafkaConsumerHandler) Cleanup(session sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-// ConsumeClaim processes messages from the Kafka topic
-func (h *KafkaConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (kh *KafkaConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	// This method is called when a new claim is made by the consumer group.
+	// It will be called for each partition that the consumer group is assigned to.
+	// You can implement your logic here to process messages from the claim.
+	// For example, you can use a loop to read messages from the claim and process them.
+	// You can also use the analyzer service to analyze the messages.
+	// This method should return an error if there is an issue processing the claim.
 	for msg := range claim.Messages() {
-		klog.Infof("Message claimed: topic = %s, partition = %d, offset = %d", msg.Topic, msg.Partition, msg.Offset)
 
-		var loginEvent analyzer.LoginEvent
-		err := json.Unmarshal(msg.Value, &loginEvent)
+		var event models.Event
+		err := json.Unmarshal(msg.Value, &event)
 		if err != nil {
-			klog.Errorf("Failed to unmarshal message: %v", err)
+			klog.Error("Error unmarshalling message: ", err)
+			session.MarkMessage(msg, "error")
 			continue
 		}
 
-		// Call the analyzer logic
-		err = h.Analyzer.ProcessLoginEvent(&loginEvent)
+		err = kh.analyzer.Analyze(event)
 		if err != nil {
-			klog.Errorf("Analyzer failed to process event: %v", err)
+			klog.Error("Error analyzing event: ", err)
+			session.MarkMessage(msg, "error")
+			continue
 		}
-
-		// Mark message as processed
-		session.MarkMessage(msg, "")
+		session.MarkMessage(msg, "") // Mark the message as processed
 	}
 	return nil
+
 }
