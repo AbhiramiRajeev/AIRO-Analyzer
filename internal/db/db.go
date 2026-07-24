@@ -10,6 +10,12 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type RepositoryInterface interface {
+	AddIncident(incident models.Incident) error
+	Close() error
+	CreateTable() error
+}
+
 type Repository struct {
 	DB *sql.DB
 }

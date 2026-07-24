@@ -23,7 +23,7 @@ func NewKafkaProducer(cfg *config.Config) (*KafkaProducer, error) {
 	}
 	return &KafkaProducer{
 		Producer: producer,
-		topic:   cfg.KafkaTopic,
+		topic:   cfg.IncidentTopic,
 	} , nil
 
 }

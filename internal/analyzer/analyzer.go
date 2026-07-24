@@ -10,12 +10,12 @@ import (
 )
 
 type AnalyzerService struct {
-	RedisClient redis.RedisClient
-	Respository db.Repository
+	RedisClient redis.RedisClientInterface
+	Respository db.RepositoryInterface
 	config      config.Config
 }
 
-func NewAnalyzerService(cfg *config.Config, redisClient redis.RedisClient, repository db.Repository) *AnalyzerService {
+func NewAnalyzerService(cfg *config.Config, redisClient redis.RedisClientInterface, repository db.RepositoryInterface) *AnalyzerService {
 	return &AnalyzerService{
 		RedisClient: redisClient,
 		Respository: repository,

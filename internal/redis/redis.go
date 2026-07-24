@@ -9,21 +9,31 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type RedisClientInterface interface {
+	AddData(username string, timestamp float64) error
+	RemOldFailues(username string, timestamp float64) error
+	GetFailedCount(username string) (int, error)
+	AddSuspiciousIp(ip string) error
+	IsSuspiciousIp(ip string) (bool, error)
+	Close() error
+}
+
 type RedisClient struct {
 	client *redis.Client
 	ctx    context.Context
 	cfg config.Config // context is used to manage the lifetime of requests to Redis, allowing you to cancel them if needed.
 }
 
-func NewRedisClient(add string, password string) (RedisClient, error) {
-	client := redis.NewClient(&redis.Options{ // redis.Options is a struct defined in the go-redis library.It holds all the configuration fields you need to connect to a Redis server.
+func NewRedisClient(add string, password string, cfg config.Config) (RedisClient, error) {
+	client := redis.NewClient(&redis.Options{
 		Addr:     add,
 		Password: password,
 		DB:       0,
 	})
 	return RedisClient{
 		client: client,
-		ctx:    context.Background(), // context.Background() returns a non-nil, empty context. It is used as the top-level context for your application.
+		ctx:    context.Background(),
+		cfg:    cfg,
 	}, nil
 }
 

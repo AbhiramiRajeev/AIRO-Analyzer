@@ -51,7 +51,7 @@ func (kc *KafkaConsumer) Start(ctx context.Context) error {
 	go func() {
 		for {
 			if err := kc.Group.Consume(ctx, []string{kc.Topic}, kc.Handler); err != nil {
-				klog.Info("Error while consuming %v", err)
+				klog.Errorf("Error while consuming %v", err)
 			}
 
 			if ctx.Err() != nil {

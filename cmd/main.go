@@ -17,7 +17,7 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	redisClient, err := redis.NewRedisClient(cfg.RedisConfig.Address, cfg.RedisConfig.Password)
+	redisClient, err := redis.NewRedisClient(cfg.RedisConfig.Address, cfg.RedisConfig.Password, *cfg)
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
@@ -33,7 +33,7 @@ func main() {
 	}
 	defer pgClient.Close()
 
-	analyzerService := analyzer.NewAnalyzerService(cfg, redisClient, *pgClient)
+	analyzerService := analyzer.NewAnalyzerService(cfg, &redisClient, pgClient)
 
 	handler := kafka.NewKafkaConsumerHandler(analyzerService)
 
